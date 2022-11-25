@@ -22,14 +22,12 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        let data = ctx.data.read().await;
-
-        while data.get::<ChannelList>().unwrap().is_empty() {
+        while ctx.data.read().await.get::<ChannelList>().unwrap().is_empty() {
             sleep(Duration::from_micros(1)).await;
         }
 
         let mut cmd = Command::new("bash")
-                                .args(data.get::<ProgramArgs>().unwrap())
+                                .args(ctx.data.read().await.get::<ProgramArgs>().unwrap())
                                 .stdout(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");
@@ -44,7 +42,7 @@ impl EventHandler for Handler {
 
             println!("process exit status was: {}", status);
             
-            for channel in ctx_clone.data.read().await.get::<ChannelList>().unwrap().iter() {
+            for channel in ctx.data.read().await.get::<ChannelList>().unwrap().iter() {
 
                 if let Err(why) = channel.say(&ctx.http, format!("process exited with status code {}", status)).await {
                     println!("Error sending message: {:?}", why);
@@ -53,7 +51,7 @@ impl EventHandler for Handler {
         });
 
         while let Some(line) = reader.next_line().await.unwrap() {
-            for channel in data.get::<ChannelList>().unwrap().iter() {
+            for channel in ctx_clone.data.read().await.get::<ChannelList>().unwrap().iter() {
 
                 if let Err(why) = channel.say(&ctx_clone.http, &line).await {
                     println!("Error sending message: {:?}", why);
