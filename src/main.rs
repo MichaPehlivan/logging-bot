@@ -1,6 +1,6 @@
 use std::{env, process::Stdio};
 
-use serenity::{prelude::*, async_trait, model::prelude::{Ready, ChannelId, Message}};
+use serenity::{prelude::*, async_trait, model::{prelude::{Ready, ChannelId, Message}, Timestamp}};
 use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Duration}};
 
 struct ProgramArgs;
@@ -53,7 +53,12 @@ impl EventHandler for Handler {
         while let Some(line) = reader.next_line().await.unwrap() {
             for channel in ctx_clone.data.read().await.get::<ChannelList>().unwrap().iter() {
 
-                if let Err(why) = channel.say(&ctx_clone.http, &line).await {
+                if let Err(why) = channel.send_message(&ctx_clone.http, |m| {
+                    m.embed(|e| {
+                        e.description(&line)
+                            .timestamp(Timestamp::now())
+                    })
+                }).await {
                     println!("Error sending message: {:?}", why);
                 }
             }
