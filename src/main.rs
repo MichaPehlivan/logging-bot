@@ -6,13 +6,18 @@ use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Du
 struct ProgramArgs;
 
 impl TypeMapKey for ProgramArgs {
-    type Value = Vec<String>;
+    type Value = CommandData;
 }
 
 struct ChannelList;
 
 impl TypeMapKey for ChannelList {
     type Value = Vec<ChannelId>;
+}
+
+struct CommandData {
+    path: String,
+    script_name: String
 }
 
 struct Handler;
@@ -27,7 +32,8 @@ impl EventHandler for Handler {
         }
 
         let mut cmd = Command::new("bash")
-                                .args(ctx.data.read().await.get::<ProgramArgs>().unwrap())
+                                .current_dir(&ctx.data.read().await.get::<ProgramArgs>().unwrap().path) //needed for script context
+                                .arg(&ctx.data.read().await.get::<ProgramArgs>().unwrap().script_name)
                                 .stdout(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");
@@ -91,7 +97,12 @@ async fn main() {
     let mut client = Client::builder(token, intents).event_handler(Handler).await.expect("Error creating client");
     {
         let mut data = client.data.write().await;
-        data.insert::<ProgramArgs>(args);
+        data.insert::<ProgramArgs>(
+            CommandData {
+                path: args.get(0).unwrap().to_owned(),
+                script_name: args.get(1).unwrap().to_owned()
+            }
+        );
         data.insert::<ChannelList>(Vec::new());
     }
 
