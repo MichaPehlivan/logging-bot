@@ -7,7 +7,13 @@ cargo run -- path_to_script script.sh
 ```
 use the `!log` command in a Discord channel to start logging
 
-#todo:
+## todo:
+
+### high priority
 - clean up code
 - make bot compatible with more filetypes (not just bash)
 - reduce input arguments to a single path
+
+### low priority
+- add configuarion for stdout and stderr 
+- make user input and commands possible
