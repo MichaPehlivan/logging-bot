@@ -12,7 +12,6 @@ use the `!log` command in a Discord channel to start logging
 ### high priority
 - clean up code
 - make bot compatible with more filetypes (not just bash)
-- reduce input arguments to a single path
 
 ### low priority
 - add configuarion for stdout and stderr 

@@ -83,6 +83,16 @@ impl EventHandler for Handler {
     }
 }
 
+fn parse_arg(arg: &String) -> CommandData {
+    let index = arg.rfind("/").unwrap();
+    let arg_as_str = arg.as_str();
+    
+    CommandData { 
+        path: arg_as_str[..index].to_string(), 
+        script_name: arg_as_str[index+1..].to_string() 
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let mut args: Vec<String> = env::args().collect();
@@ -97,12 +107,7 @@ async fn main() {
     let mut client = Client::builder(token, intents).event_handler(Handler).await.expect("Error creating client");
     {
         let mut data = client.data.write().await;
-        data.insert::<ProgramArgs>(
-            CommandData {
-                path: args.get(0).unwrap().to_owned(),
-                script_name: args.get(1).unwrap().to_owned()
-            }
-        );
+        data.insert::<ProgramArgs>(parse_arg(args.get(0).unwrap()));
         data.insert::<ChannelList>(Vec::new());
     }
 
