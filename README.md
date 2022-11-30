@@ -3,7 +3,7 @@ Discord bot to send output from a bash script to Discord channels
 
 ## usage
 ```shell
-cargo run -- path_to_script script.sh
+cargo run -- path_to_script.sh
 ```
 use the `!log` command in a Discord channel to start logging
 
