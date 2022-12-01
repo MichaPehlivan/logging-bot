@@ -4,12 +4,6 @@ use serenity::{prelude::*, model::prelude::ChannelId};
 
 mod handler;
 
-struct ProgramArgs;
-
-impl TypeMapKey for ProgramArgs {
-    type Value = CommandData;
-}
-
 struct ChannelList;
 
 impl TypeMapKey for ChannelList {
@@ -24,15 +18,12 @@ enum Shell {
 
 impl Shell {
     fn from_str(shell: &str) -> Shell {
-        if shell == ".sh" {
-            return Shell::BASH;
+        match shell {
+            ".sh" => Shell::BASH,
+            ".bat" => Shell::CMD,
+            ".cmd" => Shell::CMD,
+            _=> panic!("filetype not supported")
         }
-        else if shell == ".bat" || shell == ".cmd" {
-            return Shell::CMD;
-        }
-        else {
-            panic!("filetype not supported")
-        } 
     }
 
     fn program(&self) -> &str {
@@ -42,10 +33,10 @@ impl Shell {
         }
     }
 
-    fn args(&self) -> &str {
+    fn args(&self) -> String {
         match self {
-            Shell::BASH => "",
-            Shell::CMD => "/C",
+            Shell::BASH => "".to_string(),
+            Shell::CMD => "/C".to_string(),
         }
     }
 }
@@ -56,23 +47,24 @@ struct CommandData {
     args: Vec<String>
 }
 
+impl TypeMapKey for CommandData {
+    type Value = CommandData;
+}
+
 fn parse_arg(arg: &String) -> CommandData {
-    let index = arg.rfind("/").unwrap();
-    let arg_as_str = arg.as_str();
-    let file_extension = &arg_as_str[arg.rfind(".").unwrap()..];
+    let filename_index = arg.rfind("/").unwrap() + 1;
+    let file_extension = &arg[arg.rfind(".").unwrap()..];
     let shell = Shell::from_str(file_extension);
     
     CommandData { 
-        shell: shell.clone(),
-        dir: arg_as_str[..index].to_string(), 
+        dir: arg[..filename_index].to_string(), 
         args: {
-            if shell.args().to_string() != "" {
-                vec![shell.args().to_string(), arg_as_str[index+1..].to_string()]
-            }
-            else {
-                vec![arg_as_str[index+1..].to_string()]
-            }
-        } 
+            let file_arg = arg[filename_index..].to_string();
+            let shell_args = shell.args();
+
+            if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg] }
+        },
+        shell: shell,
     }
 }
 
@@ -83,14 +75,12 @@ async fn main() {
 
     let token = env::var("BOT_TOKEN").expect("token not found");
 
-    let intents = GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::DIRECT_MESSAGES
-        | GatewayIntents::MESSAGE_CONTENT;
+    let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
 
     let mut client = Client::builder(token, intents).event_handler(handler::Handler).await.expect("Error creating client");
     {
         let mut data = client.data.write().await;
-        data.insert::<ProgramArgs>(parse_arg(args.get(0).unwrap()));
+        data.insert::<CommandData>(parse_arg(args.get(0).unwrap()));
         data.insert::<ChannelList>(Vec::new());
     }
 

@@ -3,12 +3,13 @@ use std::process::Stdio;
 use serenity::{prelude::*, async_trait, model::{prelude::{Ready, Message}, Timestamp}};
 use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Duration}};
 
-use crate::{ChannelList, ProgramArgs};
+use crate::{ChannelList, CommandData};
 
 pub struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
+
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
@@ -16,9 +17,13 @@ impl EventHandler for Handler {
             sleep(Duration::from_micros(1)).await;
         }
 
-        let mut cmd = Command::new(ctx.data.read().await.get::<ProgramArgs>().unwrap().shell.program())
-                                .current_dir(&ctx.data.read().await.get::<ProgramArgs>().unwrap().dir) //needed for script context
-                                .args(&ctx.data.read().await.get::<ProgramArgs>().unwrap().args)
+        let ctx_data_clone = ctx.data.clone();
+        let ctx_data = ctx_data_clone.read().await;
+        let program_args = ctx_data.get::<CommandData>().unwrap();
+
+        let mut cmd = Command::new(program_args.shell.program())
+                                .current_dir(&program_args.dir) //needed for script context
+                                .args(&program_args.args)
                                 .stdout(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");
@@ -42,15 +47,17 @@ impl EventHandler for Handler {
         });
 
         while let Some(line) = reader.next_line().await.unwrap() {
-            for channel in ctx_clone.data.read().await.get::<ChannelList>().unwrap().iter() {
+            for channel in ctx_data.get::<ChannelList>().unwrap().iter() {
 
-                if let Err(why) = channel.send_message(&ctx_clone.http, |m| {
-                    m.embed(|e| {
-                        e.description(&line)
-                            .timestamp(Timestamp::now())
-                    })
-                }).await {
-                    println!("Error sending message: {:?}", why);
+                if !line.is_empty() {
+                    if let Err(why) = channel.send_message(&ctx_clone.http, |m| {
+                        m.embed(|e| {
+                            e.description(&line)
+                                .timestamp(Timestamp::now())
+                        })
+                    }).await {
+                        println!("Error sending message: {:?}", why);
+                    }
                 }
             }
         }
