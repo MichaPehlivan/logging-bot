@@ -16,9 +16,9 @@ impl EventHandler for Handler {
             sleep(Duration::from_micros(1)).await;
         }
 
-        let mut cmd = Command::new("bash")
-                                .current_dir(&ctx.data.read().await.get::<ProgramArgs>().unwrap().path) //needed for script context
-                                .arg(&ctx.data.read().await.get::<ProgramArgs>().unwrap().script_name)
+        let mut cmd = Command::new(ctx.data.read().await.get::<ProgramArgs>().unwrap().shell.program())
+                                .current_dir(&ctx.data.read().await.get::<ProgramArgs>().unwrap().dir) //needed for script context
+                                .args(&ctx.data.read().await.get::<ProgramArgs>().unwrap().args)
                                 .stdout(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");

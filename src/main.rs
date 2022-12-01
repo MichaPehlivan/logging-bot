@@ -16,18 +16,63 @@ impl TypeMapKey for ChannelList {
     type Value = Vec<ChannelId>;
 }
 
+#[derive(Clone)]
+enum Shell {
+    BASH,
+    CMD
+}
+
+impl Shell {
+    fn from_str(shell: &str) -> Shell {
+        if shell == ".sh" {
+            return Shell::BASH;
+        }
+        else if shell == ".bat" || shell == ".cmd" {
+            return Shell::CMD;
+        }
+        else {
+            panic!("filetype not supported")
+        } 
+    }
+
+    fn program(&self) -> &str {
+        match self {
+            Shell::BASH => "bash",
+            Shell::CMD => "cmd",
+        }
+    }
+
+    fn args(&self) -> &str {
+        match self {
+            Shell::BASH => "",
+            Shell::CMD => "/C",
+        }
+    }
+}
+
 struct CommandData {
-    path: String,
-    script_name: String
+    shell: Shell,
+    dir: String,
+    args: Vec<String>
 }
 
 fn parse_arg(arg: &String) -> CommandData {
     let index = arg.rfind("/").unwrap();
     let arg_as_str = arg.as_str();
+    let file_extension = &arg_as_str[arg.rfind(".").unwrap()..];
+    let shell = Shell::from_str(file_extension);
     
     CommandData { 
-        path: arg_as_str[..index].to_string(), 
-        script_name: arg_as_str[index+1..].to_string() 
+        shell: shell.clone(),
+        dir: arg_as_str[..index].to_string(), 
+        args: {
+            if shell.args().to_string() != "" {
+                vec![shell.args().to_string(), arg_as_str[index+1..].to_string()]
+            }
+            else {
+                vec![arg_as_str[index+1..].to_string()]
+            }
+        } 
     }
 }
 
