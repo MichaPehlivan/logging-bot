@@ -17,11 +17,11 @@ enum Shell {
 }
 
 impl Shell {
+    
     fn from_str(shell: &str) -> Shell {
         match shell {
             ".sh" => Shell::BASH,
-            ".bat" => Shell::CMD,
-            ".cmd" => Shell::CMD,
+            ".bat" | ".cmd" => Shell::CMD,
             _=> panic!("filetype not supported")
         }
     }

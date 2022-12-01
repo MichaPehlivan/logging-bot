@@ -1,5 +1,5 @@
 # logging-bot
-Discord bot to send output from a bash script to Discord channels
+Discord bot to send cli output to Discord channels
 
 ## usage
 ```shell
