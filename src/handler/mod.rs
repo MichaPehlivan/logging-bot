@@ -1,9 +1,11 @@
-use std::process::Stdio;
+use std::process::{Stdio};
 
-use serenity::{prelude::*, async_trait, model::{prelude::{Ready, Message}, Timestamp}};
+use serenity::{prelude::*, async_trait, model::prelude::{Ready, Message}};
 use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Duration}};
 
-use crate::{ChannelList, CommandData};
+use crate::{ChannelList, CommandData, OutputModes};
+
+mod send_output;
 
 pub struct Handler;
 
@@ -25,11 +27,14 @@ impl EventHandler for Handler {
                                 .current_dir(&program_args.dir) //needed for script context
                                 .args(&program_args.args)
                                 .stdout(Stdio::piped())
+                                .stderr(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");
 
         let stdout = cmd.stdout.take().expect("command did not have handle to stdout");
-        let mut reader = BufReader::new(stdout).lines();
+        let stdout_reader = BufReader::new(stdout).lines();
+        let stderr = cmd.stderr.take().expect("command did not have handle to stderr");
+        let stderr_reader = BufReader::new(stderr).lines();
 
         let ctx_clone = ctx.clone();
         tokio::spawn(async move {
@@ -46,21 +51,10 @@ impl EventHandler for Handler {
             }
         });
 
-        while let Some(line) = reader.next_line().await.unwrap() {
-            for channel in ctx_data.get::<ChannelList>().unwrap().iter() {
+        let data_clone = ctx_clone.data.read().await;
+        let mode = data_clone.get::<OutputModes>().unwrap();
 
-                if !line.is_empty() {
-                    if let Err(why) = channel.send_message(&ctx_clone.http, |m| {
-                        m.embed(|e| {
-                            e.description(&line)
-                                .timestamp(Timestamp::now())
-                        })
-                    }).await {
-                        println!("Error sending message: {:?}", why);
-                    }
-                }
-            }
-        }
+        send_output::send_output(&ctx_clone, mode, stdout_reader, stderr_reader, ctx_clone.data.read().await.get::<ChannelList>().unwrap()).await;
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
