@@ -51,6 +51,12 @@ impl TypeMapKey for CommandData {
     type Value = CommandData;
 }
 
+struct CommandInput;
+
+impl TypeMapKey for CommandInput {
+    type Value = Vec<String>;
+}
+
 pub enum OutputModes {
     STDOUT,
     STDERR,
@@ -60,7 +66,7 @@ impl TypeMapKey for OutputModes {
     type Value = OutputModes;
 }
 
-fn parse_command_data(arg: &String) -> CommandData {
+fn parse_command_data(arg: &String, mut input: Vec<String>) -> CommandData {
     let filename_index = arg.rfind("/").unwrap() + 1;
     let file_extension = &arg[arg.rfind(".").unwrap()..];
     let shell = Shell::from_str(file_extension);
@@ -70,8 +76,11 @@ fn parse_command_data(arg: &String) -> CommandData {
         args: {
             let file_arg = arg[filename_index..].to_string();
             let shell_args = shell.args();
-
-            if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg] }
+            let mut final_args = {
+                if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg] }
+            };
+            final_args.append(&mut input);
+            final_args
         },
         shell: shell,
     }
@@ -97,7 +106,7 @@ async fn main() {
     let mut client = Client::builder(token, intents).event_handler(handler::Handler).await.expect("Error creating client");
     {
         let mut data = client.data.write().await;
-        data.insert::<CommandData>(parse_command_data(args.get(0).unwrap()));
+        data.insert::<CommandData>(parse_command_data(args.get(0).unwrap(), args[2..].to_vec()));
         data.insert::<ChannelList>(Vec::new());
         data.insert::<OutputModes>(parse_mode(args.get(1).unwrap()));
     }
