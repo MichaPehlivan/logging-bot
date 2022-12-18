@@ -1,6 +1,6 @@
 use std::process::{Stdio};
 
-use serenity::{prelude::*, async_trait, model::prelude::{Ready, Message}};
+use serenity::{prelude::*, async_trait, model::{prelude::{Ready, Message, Activity}}};
 use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Duration}};
 
 use crate::{ChannelList, CommandData, OutputModes};
@@ -14,6 +14,8 @@ impl EventHandler for Handler {
 
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
+
+        ctx.set_activity(Activity::playing(&ctx.data.read().await.get::<CommandData>().unwrap().args[0..2][0])).await; //sets activity to script name
 
         while ctx.data.read().await.get::<ChannelList>().unwrap().is_empty() {
             sleep(Duration::from_micros(1)).await;

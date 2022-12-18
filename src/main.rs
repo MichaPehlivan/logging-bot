@@ -51,12 +51,6 @@ impl TypeMapKey for CommandData {
     type Value = CommandData;
 }
 
-struct CommandInput;
-
-impl TypeMapKey for CommandInput {
-    type Value = Vec<String>;
-}
-
 pub enum OutputModes {
     STDOUT,
     STDERR,
@@ -77,7 +71,7 @@ fn parse_command_data(arg: &String, mut input: Vec<String>) -> CommandData {
             let file_arg = arg[filename_index..].to_string();
             let shell_args = shell.args();
             let mut final_args = {
-                if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg] }
+                if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg, "".to_string()] }
             };
             final_args.append(&mut input);
             final_args
