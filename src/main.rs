@@ -1,6 +1,7 @@
 use std::env;
 
 use serenity::{prelude::*, model::prelude::ChannelId};
+use tokio::{process::ChildStdin, io::BufWriter};
 
 mod handler;
 
@@ -51,6 +52,12 @@ impl TypeMapKey for CommandData {
     type Value = CommandData;
 }
 
+struct InputWriter;
+
+impl TypeMapKey for InputWriter {
+    type Value = BufWriter<ChildStdin>;
+}
+
 pub enum OutputModes {
     STDOUT,
     STDERR,
@@ -71,7 +78,7 @@ fn parse_command_data(arg: &String, mut input: Vec<String>) -> CommandData {
             let file_arg = arg[filename_index..].to_string();
             let shell_args = shell.args();
             let mut final_args = {
-                if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg, "".to_string()] }
+                if shell_args != "" { vec![shell_args, file_arg] } else { vec![file_arg] }
             };
             final_args.append(&mut input);
             final_args

@@ -1,9 +1,9 @@
-use std::process::{Stdio};
+use std::process::Stdio;
 
 use serenity::{prelude::*, async_trait, model::{prelude::{Ready, Message, Activity}}};
 use tokio::{process::Command, io::{BufReader, AsyncBufReadExt}, time::{sleep, Duration}};
 
-use crate::{ChannelList, CommandData, OutputModes};
+use crate::{ChannelList, CommandData, OutputModes, Shell};
 
 mod send_output;
 
@@ -15,8 +15,6 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        ctx.set_activity(Activity::playing(&ctx.data.read().await.get::<CommandData>().unwrap().args[0..2][0])).await; //sets activity to script name
-
         while ctx.data.read().await.get::<ChannelList>().unwrap().is_empty() {
             sleep(Duration::from_micros(1)).await;
         }
@@ -24,6 +22,11 @@ impl EventHandler for Handler {
         let ctx_data_clone = ctx.data.clone();
         let ctx_data = ctx_data_clone.read().await;
         let program_args = ctx_data.get::<CommandData>().unwrap();
+
+        match program_args.shell {
+            Shell::BASH => ctx.set_activity(Activity::playing(&program_args.args[0])).await, //sets activity to script name,
+            Shell::CMD => ctx.set_activity(Activity::playing(&program_args.args[1])).await
+        }
 
         let mut cmd = Command::new(program_args.shell.program())
                                 .current_dir(&program_args.dir) //needed for script context
@@ -35,6 +38,7 @@ impl EventHandler for Handler {
 
         let stdout = cmd.stdout.take().expect("command did not have handle to stdout");
         let stdout_reader = BufReader::new(stdout).lines();
+
         let stderr = cmd.stderr.take().expect("command did not have handle to stderr");
         let stderr_reader = BufReader::new(stderr).lines();
 
@@ -55,13 +59,14 @@ impl EventHandler for Handler {
 
         let data_clone = ctx_clone.data.read().await;
         let mode = data_clone.get::<OutputModes>().unwrap();
+        let channels = data_clone.get::<ChannelList>().unwrap();
 
-        send_output::send_output(&ctx_clone, mode, stdout_reader, stderr_reader, ctx_clone.data.read().await.get::<ChannelList>().unwrap()).await;
+        send_output::send_output(&ctx_clone, mode, stdout_reader, stderr_reader, channels).await;
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
-        if msg.content == "!log" {
-            let mut data = ctx.data.write().await;
+        if !msg.author.bot && msg.content.starts_with("!log") {
+            let mut data = ctx.data.try_write().unwrap();
             data.get_mut::<ChannelList>().unwrap().push(msg.channel_id);
             
             if let Err(why) = msg.channel_id.say(&ctx.http, "now posting logs in this channel").await {
