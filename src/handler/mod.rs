@@ -15,7 +15,7 @@ impl EventHandler for Handler {
     async fn ready(&self, ctx: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);
 
-        while ctx.data.read().await.get::<ChannelList>().unwrap().is_empty() {
+        while ctx.data.read().await.get::<ChannelList>().unwrap().is_empty() { //wait for at least 1 channel to log
             sleep(Duration::from_micros(1)).await;
         }
 
@@ -35,6 +35,8 @@ impl EventHandler for Handler {
                                 .stderr(Stdio::piped())
                                 .spawn()
                                 .expect("unable to spawn program");
+        
+        drop(ctx_data); //RwLock freed
 
         let stdout = cmd.stdout.take().expect("command did not have handle to stdout");
         let stdout_reader = BufReader::new(stdout).lines();
@@ -59,7 +61,7 @@ impl EventHandler for Handler {
 
         let data_clone = ctx_clone.data.read().await;
         let mode = data_clone.get::<OutputModes>().unwrap().clone();
-        drop(data_clone);
+        drop(data_clone); //RwLock freed
 
         send_output::send_output(&ctx_clone, &mode, stdout_reader, stderr_reader).await;
     }

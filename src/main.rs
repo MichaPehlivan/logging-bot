@@ -84,7 +84,7 @@ fn parse_command_data(arg: &String, mut input: Vec<String>) -> CommandData {
             final_args.append(&mut input);
             final_args
         },
-        shell: shell,
+        shell,
     }
 }
 
