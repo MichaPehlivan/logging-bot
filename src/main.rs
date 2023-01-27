@@ -58,6 +58,7 @@ impl TypeMapKey for InputWriter {
     type Value = BufWriter<ChildStdin>;
 }
 
+#[derive(Clone, Copy)]
 pub enum OutputModes {
     STDOUT,
     STDERR,

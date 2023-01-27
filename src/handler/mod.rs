@@ -58,10 +58,10 @@ impl EventHandler for Handler {
         });
 
         let data_clone = ctx_clone.data.read().await;
-        let mode = data_clone.get::<OutputModes>().unwrap();
-        let channels = data_clone.get::<ChannelList>().unwrap();
+        let mode = data_clone.get::<OutputModes>().unwrap().clone();
+        drop(data_clone);
 
-        send_output::send_output(&ctx_clone, mode, stdout_reader, stderr_reader, channels).await;
+        send_output::send_output(&ctx_clone, &mode, stdout_reader, stderr_reader).await;
     }
 
     async fn message(&self, ctx: Context, msg: Message) {
